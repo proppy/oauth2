@@ -22,8 +22,8 @@ import (
 	"net/url"
 	"time"
 
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/internal"
+	"github.com/proppy/oauth2"
+	"github.com/proppy/oauth2/internal"
 )
 
 var (

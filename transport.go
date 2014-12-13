@@ -94,7 +94,7 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		// Check if the token is refreshable.
 		// If token is refreshable, don't return an error,
 		// rather refresh.
-		if err := t.refreshToken(); err != nil {
+		if err := t.Refresh(); err != nil {
 			return nil, err
 		}
 		token = t.token
@@ -123,10 +123,10 @@ func (t *Transport) Token() *Token {
 	return t.token
 }
 
-// refreshToken retrieves a new token, if a refreshing/fetching
+// Refresh retrieves a new token, if a refreshing/fetching
 // method is known and required credentials are presented
 // (such as a refresh token).
-func (t *Transport) refreshToken() error {
+func (t *Transport) Refresh() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	token, err := t.opts.TokenFetcherFunc(t.token)
