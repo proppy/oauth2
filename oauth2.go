@@ -200,7 +200,7 @@ func (o *Options) NewTransportFromCode(code string) (*Transport, error) {
 
 // NewTransport returns a Transport.
 func (o *Options) NewTransport() *Transport {
-	return o.NewTransportFromToken(nil)
+	return o.NewTransportFromToken(o.InitialToken)
 }
 
 // NewTransportFromToken returns a new Transport that is authorized
@@ -280,6 +280,8 @@ type Options struct {
 	TokenFetcherFunc func(t *Token) (*Token, error)
 
 	Client *http.Client
+
+	InitialToken *Token
 }
 
 func retrieveToken(o *Options, v url.Values) (*Token, error) {

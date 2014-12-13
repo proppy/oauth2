@@ -17,7 +17,6 @@ package google
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"os/user"
 	"path"
@@ -51,42 +50,33 @@ func gcloudCredPath() (string, error) {
 	return path.Join(usr.HomeDir, gcloudPath), nil
 }
 
-// NewTransportFromCredential return a oauth2.Transport from gcloud credentials.
-func NewTransportFromCredentials() (*oauth2.Transport, error) {
-	path, err := gcloudCredPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get credentials path: %v", err)
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load credentials from %q: %v", path, err)
-	}
-	defer f.Close()
+// GcloudCredentials return a oauth2.Transport from gcloud credentials.
+func GcloudCredentials() oauth2.Option {
+	return func(opts *oauth2.Options) error {
+		path, err := gcloudCredPath()
+		if err != nil {
+			return fmt.Errorf("failed to get credentials path: %v", err)
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return fmt.Errorf("failed to load credentials from %q: %v", path, err)
+		}
+		defer f.Close()
 
-	var c credentials
-	if err := json.NewDecoder(f).Decode(c); err != nil {
-		return nil, fmt.Errorf("failed to decode credentials from %q: %v", path, err)
+		var c credentials
+		if err := json.NewDecoder(f).Decode(&c); err != nil {
+			return fmt.Errorf("failed to decode credentials from %q: %v", path, err)
+		}
+		if len(c.Data) == 0 {
+			return fmt.Errorf("no credentials found in: %q", path)
+		}
+		opts.ClientID = c.Data[0].Credential.ClientId
+		opts.ClientSecret = c.Data[0].Credential.ClientSecret
+		opts.Scopes = []string{c.Data[0].Key.Scope}
+		opts.RedirectURL = "oob"
+		opts.AuthURL = uriGoogleAuth
+		opts.TokenURL = uriGoogleToken
+		opts.InitialToken = &oauth2.Token{RefreshToken: c.Data[0].Credential.RefreshToken}
+		return nil
 	}
-	if len(c.Data) == 0 {
-		return nil, fmt.Errorf("no credentials found in: %q", path)
-	}
-	return c.transport()
-}
-
-func (c *credentials) transport() (*oauth2.Transport, error) {
-	authURL, _ := url.Parse("https://accounts.google.com/o/oauth2/auth")
-	tokenURL, _ := url.Parse("https://accounts.google.com/o/oauth2/token")
-	opts := &oauth2.Options{
-		ClientID:     c.Data[0].Credential.ClientId,
-		ClientSecret: c.Data[0].Credential.ClientSecret,
-		Scopes:       []string{c.Data[0].Key.Scope},
-		RedirectURL:  "oob",
-		AuthURL:      authURL,
-		TokenURL:     tokenURL,
-	}
-	t := opts.NewTransportFromToken(&oauth2.Token{RefreshToken: c.Data[0].Credential.RefreshToken})
-	if err := t.Refresh(); err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %v", err)
-	}
-	return t, nil
 }
